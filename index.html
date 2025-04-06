@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Esign Integration</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js" defer></script>
+    <script src="scripts.js" defer></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <h1>Esign Integration</h1>
+
+      <div class="form-container">
+        <div class="step-counter">Step {{ currentStep }} of 5</div>
+
+        <div v-if="currentStep === 1">
+          <p>Choose file for signature</p>
+          <label for="fileInput">Upload PDF or XML</label>
+          <input
+            type="file"
+            id="fileInput"
+            @change="onFileChange"
+            accept=".PDF, .XML"
+          />
+          <div class="file-info">
+            You have selected: <strong>{{ fileName }}</strong>
+          </div>
+
+          <div class="buttons">
+            <button @click="nextStep" :disabled="!fileName">Next</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="errorMessage" class="error-box">
+        {{ errorMessage }}
+      </div>
+
+    </div>
+  </body>
+</html>
