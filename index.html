@@ -2,42 +2,310 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Esign Integration</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>Autogram Podposovanie</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js" defer></script>
-    <script src="scripts.js" defer></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   </head>
-
-  <body>
+  <body class="max-w-2xl mx-auto p-4 bg-gray-50 font-sans">
     <div id="app">
-      <h1>Esign Integration</h1>
+      <h1 class="text-2xl font-bold mb-4 text-gray-800">
+        Ases Podposovanie: File Upload and Signing
+      </h1>
 
-      <div class="form-container">
-        <div class="step-counter">Step {{ currentStep }} of 5</div>
+      <div class="text-sm text-gray-600 mb-5 space-y-1">
+        <p>1) Select a file (PDF or XML).</p>
+        <p>2) Choose a MIME type and signature level.</p>
+        <p>3) If desired, configure the container and advanced settings.</p>
+        <p>4) Click "Sign Document".</p>
+      </div>
 
-        <div v-if="currentStep === 1">
-          <p>Choose file for signature</p>
-          <label for="fileInput">Upload PDF or XML</label>
-          <input
-            type="file"
-            id="fileInput"
-            @change="onFileChange"
-            accept=".PDF, .XML"
-          />
-          <div class="file-info">
-            You have selected: <strong>{{ fileName }}</strong>
-          </div>
-
-          <div class="buttons">
-            <button @click="nextStep" :disabled="!fileName">Next</button>
-          </div>
+      <!-- Step 1 -->
+      <div class="border border-gray-300 rounded-md p-4 mb-5 bg-white">
+        <h2 class="text-lg font-semibold mb-2 text-gray-800">Step 1: Choose File</h2>
+        <label for="fileInput" class="font-semibold text-gray-700 mt-4 block">
+          File to sign:
+        </label>
+        <input
+          type="file"
+          id="fileInput"
+          @change="onFileChange"
+          accept=".pdf,.xml"
+          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+        />
+        <div v-if="fileName" class="text-sm text-gray-700 mt-2">
+          You have selected a file:
+          <strong>{{ fileName }}</strong>
         </div>
       </div>
 
-      <div v-if="errorMessage" class="error-box">
-        {{ errorMessage }}
+      <!-- Step 2 -->
+      <div class="border border-gray-300 rounded-md p-4 mb-5 bg-white">
+        <h2 class="text-lg font-semibold mb-2 text-gray-800">Step 2: Basic Parameters</h2>
+
+        <label class="font-semibold text-gray-700 block">
+          File MIME type:
+        </label>
+        <select
+          v-model="mimeType"
+          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+        >
+          <option value="application/pdf;base64">application/pdf;base64</option>
+          <option value="application/xml;base64">application/xml;base64</option>
+        </select>
+
+        <label class="font-semibold text-gray-700 block">
+          Signature Level:
+        </label>
+        <select
+          v-model="signatureLevel"
+          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+        >
+          <option value="PAdES_BASELINE_B">PAdES_BASELINE_B (for PDF)</option>
+          <option value="XAdES_BASELINE_B">XAdES_BASELINE_B (for XML)</option>
+          <option value="CAdES_BASELINE_B">CAdES_BASELINE_B</option>
+        </select>
+
+        <label class="font-semibold text-gray-700 block">
+          Container (optional):
+        </label>
+        <select
+          v-model="containerType"
+          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+        >
+          <option value="">(no container)</option>
+          <option value="ASiC_E">ASiC_E</option>
+        </select>
       </div>
 
+      <div
+        class="border border-gray-300 rounded-md p-4 mb-5 bg-white"
+        v-if="showXadesSettings"
+      >
+        <h2 class="text-lg font-semibold mb-2 text-gray-800">XAdES Settings</h2>
+        <label for="packagingType" class="font-semibold text-gray-700 block">
+          XML packaging type (Packaging):
+        </label>
+        <select
+          id="packagingType"
+          v-model="xadesPackaging"
+          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+        >
+          <option value="ENVELOPED">ENVELOPED</option>
+          <option value="ENVELOPING">ENVELOPING</option>
+        </select>
+        <div class="mt-2 text-sm text-gray-700">
+          <p>XAdES is used for XML documents or inside an ASiC container.</p>
+        </div>
+      </div>
+
+      <div
+        class="border border-gray-300 rounded-md p-4 mb-5 bg-white"
+        v-if="showPadesSettings"
+      >
+        <h2 class="text-lg font-semibold mb-2 text-gray-800">PAdES Settings</h2>
+        <label for="checkPdfA" class="font-semibold text-gray-700 block">
+          Check PDF/A compliance?
+        </label>
+        <select
+          id="checkPdfA"
+          v-model="checkPDFA"
+          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+        >
+          <option :value="true">Yes</option>
+          <option :value="false">No</option>
+        </select>
+        <div class="mt-2 text-sm text-gray-700">
+          <p>PAdES is used for PDF documents.</p>
+        </div>
+      </div>
+
+      <div
+        class="border border-gray-300 rounded-md p-4 mb-5 bg-white"
+        v-if="showAsicSettings"
+      >
+        <h2 class="text-lg font-semibold mb-2 text-gray-800">ASiC Container</h2>
+        <label for="asicNote" class="font-semibold text-gray-700 block">
+          Additional fields for ASiC:
+        </label>
+        <input
+          type="text"
+          id="asicNote"
+          v-model="asicNote"
+          placeholder="Enter any value (optional)"
+          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+        />
+        <div class="mt-2 text-sm text-gray-700">
+          <p>
+            ASiC_E creates an archive with the file and the signature in a
+            single container.
+          </p>
+        </div>
+      </div>
+
+      <button
+        @click="signDocument"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md"
+      >
+        Sign Document
+      </button>
+
+      <!-- Displaying status/result -->
+      <div
+        class="response-area mt-5 border border-gray-300 bg-white p-4 rounded-md text-sm text-gray-800 whitespace-pre-wrap"
+      >
+        {{ responseMessage }}
+      </div>
     </div>
+
+    <script>
+      const { createApp, ref, computed } = Vue;
+
+      createApp({
+        setup() {
+          const fileData = ref(null); // Base64 file content
+          const fileName = ref("");   // Selected file name
+          const mimeType = ref("application/xml;base64");
+          const signatureLevel = ref("XAdES_BASELINE_B");
+          const containerType = ref("");
+          const xadesPackaging = ref("ENVELOPED");
+          const checkPDFA = ref(false);
+          const asicNote = ref("");
+
+          const responseMessage = ref("Waiting for user action...");
+
+          // Show XAdES settings when XAdES is selected
+          const showXadesSettings = computed(() => {
+            return signatureLevel.value.includes("XAdES");
+          });
+          // Show PAdES settings when PAdES is selected
+          const showPadesSettings = computed(() => {
+            return signatureLevel.value.includes("PAdES");
+          });
+          // Show ASiC fields when containerType = ASiC_E
+          const showAsicSettings = computed(() => {
+            return containerType.value === "ASiC_E";
+          });
+
+          // 1) Reading file to Base64
+          const onFileChange = async (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+              responseMessage.value = "No file selected!";
+              fileData.value = null;
+              fileName.value = "";
+              return;
+            }
+            fileName.value = file.name;
+            responseMessage.value = `Reading file...`;
+            try {
+              const base64Content = await readFileAsBase64(file);
+              fileData.value = base64Content;
+              responseMessage.value = `File "${file.name}" has been read to Base64.`;
+            } catch (err) {
+              fileData.value = null;
+              responseMessage.value = `Reading error: ${err}`;
+            }
+          };
+
+          const readFileAsBase64 = (file) => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result;
+                const base64Index = result.indexOf("base64,") + 7;
+                const base64String = result.substring(base64Index);
+                resolve(base64String);
+              };
+              reader.onerror = (error) => reject(error);
+              reader.readAsDataURL(file);
+            });
+          };
+
+          // 2) Sign document
+          const signDocument = async () => {
+            if (!fileData.value) {
+              responseMessage.value = "No file to sign. Please select a file first!";
+              return;
+            }
+            responseMessage.value = "Forming request to Autogram...";
+
+            const requestBody = {
+              document: {
+                filename: fileName.value,
+                content: fileData.value,
+              },
+              parameters: {
+                level: signatureLevel.value,
+                container: containerType.value || null,
+              },
+              payloadMimeType: mimeType.value,
+            };
+
+            if (showXadesSettings.value) {
+              requestBody.parameters.packaging = xadesPackaging.value;
+            }
+            if (showPadesSettings.value) {
+              requestBody.parameters.checkPDFACompliance = checkPDFA.value;
+            }
+            if (showAsicSettings.value && asicNote.value) {
+              // 'asicNote' is just a demo field, not recognized by Autogram
+              requestBody.parameters.asicNote = asicNote.value;
+            }
+
+            responseMessage.value = "Sending request to Autogram Server...";
+
+            try {
+              const res = await fetch("http://localhost:37200/sign", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestBody),
+              });
+
+              if (res.ok) {
+                const data = await res.json();
+                responseMessage.value =
+                  `Signing successful!\n` +
+                  `Server response:\n` +
+                  JSON.stringify(data, null, 2);
+              } else {
+                const errText = await res.text();
+                responseMessage.value = `Server returned an error (${res.status}):\n${errText}`;
+              }
+            } catch (err) {
+              if (
+                err instanceof TypeError &&
+                err.message.includes("Failed to fetch")
+              ) {
+                responseMessage.value =
+                  "Error: It seems we could not connect to Autogram.\n" +
+                  "Maybe it's not running.\n" +
+                  "Check if Autogram is running on your computer.\n" +
+                  "If you don't have it, download it here:\n" +
+                  "https://sluzby.slovensko.digital/autogram/#download";
+              } else {
+                responseMessage.value = `Other error:\n${err}`;
+              }
+            }
+          };
+
+          return {
+            fileName,
+            mimeType,
+            signatureLevel,
+            containerType,
+            xadesPackaging,
+            checkPDFA,
+            asicNote,
+            responseMessage,
+            onFileChange,
+            signDocument,
+            showXadesSettings,
+            showPadesSettings,
+            showAsicSettings,
+          };
+        },
+      }).mount("#app");
+    </script>
   </body>
 </html>
