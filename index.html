@@ -1,311 +1,241 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Autogram Podposovanie</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js" defer></script>
+<head>
+    <meta charset="UTF-8"/>
+    <title>Autogram Signature</title>
 
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+    <!-- Tailwind (Play CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  </head>
-  <body class="max-w-2xl mx-auto p-4 bg-gray-50 font-sans">
-    <div id="app">
-      <h1 class="text-2xl font-bold mb-4 text-gray-800">
-        Ases Podposovanie: File Upload and Signing
-      </h1>
 
-      <div class="text-sm text-gray-600 mb-5 space-y-1">
-        <p>1) Select a file (PDF or XML).</p>
-        <p>2) Choose a MIME type and signature level.</p>
-        <p>3) If desired, configure the container and advanced settings.</p>
-        <p>4) Click "Sign Document".</p>
-      </div>
+    <!-- PDF-JS (for reliable PDF/A detection) -->
+    <script
+            crossorigin="anonymous"
+            integrity="sha512-7D3bP56hi9ppEpHoW1vwyk6scsKUXcEiqaS5P+uS8q4XnF2Hr8n7ZaawQy3P0DHy4OqdsKUaR/MCx2CYXiHTMw=="
+            referrerpolicy="no-referrer"
+            src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.min.js"
+    ></script>
 
-      <!-- Step 1 -->
-      <div class="border border-gray-300 rounded-md p-4 mb-5 bg-white">
-        <h2 class="text-lg font-semibold mb-2 text-gray-800">Step 1: Choose File</h2>
-        <label for="fileInput" class="font-semibold text-gray-700 mt-4 block">
-          File to sign:
-        </label>
+
+</head>
+
+<body class="min-h-screen flex items-start justify-center bg-gray-100 p-4">
+<div class="w-full max-w-lg bg-white border border-gray-300 rounded-lg shadow" id="app">
+
+    <header class="rounded-t-lg bg-blue-500 text-white text-center py-3 text-xl font-bold">
+        Autogram Signature
+    </header>
+
+    <!-- STEP 1 -->
+    <section class="px-6 py-5">
+        <h2 class="text-center text-lg font-semibold mb-4">Step 1 · Select PDF</h2>
+
         <input
-          type="file"
-          id="fileInput"
-          @change="onFileChange"
-          accept=".pdf,.xml"
-          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+                @change="onPdfChange"
+                accept=".pdf"
+                class="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-3 hover:border-blue-500 focus:outline-none focus:ring-blue-500"
+                type="file"
         />
-        <div v-if="fileName" class="text-sm text-gray-700 mt-2">
-          You have selected a file:
-          <strong>{{ fileName }}</strong>
+
+        <p class="text-center text-sm text-gray-700" v-if="fileName">
+            Selected: <strong>{{ fileName }}</strong>
+        </p>
+        <p class="text-center text-sm text-red-600 mt-2" v-if="errorMsg">
+            {{ errorMsg }}
+        </p>
+
+        <!-- PDF/A result -->
+        <p
+                :class="pdfaDetected ? 'text-green-600' : 'text-yellow-700'"
+                class="text-center text-sm mt-2"
+                v-if="pdfaDetected !== null"
+        >
+            {{ pdfaDetected
+                ? 'The file is PDF/A-conformant'
+                : 'The file is a regular PDF (not PDF/A)' }}
+        </p>
+    </section>
+
+    <!-- ADVANCED -->
+    <section class="border-t border-gray-200 px-6 py-5" v-if="fileReady">
+        <button
+                @click="showAdvanced = !showAdvanced"
+                class="mx-auto flex items-center text-sm text-gray-600 hover:text-gray-800"
+        >
+            <span class="mr-1">{{ showAdvanced ? '▼' : '►' }}</span>
+            {{ showAdvanced ? 'Hide advanced option' : 'Show advanced option' }}
+        </button>
+
+        <div
+                class="mt-4 border border-blue-200 bg-blue-50 rounded-md p-4 text-sm"
+                v-if="showAdvanced"
+        >
+            <label class="font-semibold block mb-1">Check PDF/A compliance?</label>
+            <select
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    v-model="checkPDFA"
+            >
+                <option :value="true">Yes</option>
+                <option :value="false">No</option>
+            </select>
         </div>
-      </div>
+    </section>
 
-      <!-- Step 2 -->
-      <div class="border border-gray-300 rounded-md p-4 mb-5 bg-white">
-        <h2 class="text-lg font-semibold mb-2 text-gray-800">Step 2: Basic Parameters</h2>
-
-        <label class="font-semibold text-gray-700 block">
-          File MIME type:
-        </label>
-        <select
-          v-model="mimeType"
-          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+    <!-- SIGN -->
+    <footer class="px-6 pb-6 flex flex-col items-center space-y-3">
+        <button
+                :disabled="!canSign"
+                @click="signPdf"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-md disabled:opacity-50"
         >
-          <option value="application/pdf;base64">application/pdf;base64</option>
-          <option value="application/xml;base64">application/xml;base64</option>
-        </select>
+            Sign PDF
+        </button>
 
-        <label class="font-semibold text-gray-700 block">
-          Signature Level:
-        </label>
-        <select
-          v-model="signatureLevel"
-          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+        <p class="text-xs text-gray-500 mt-1" v-if="showOpenLink">
+            If nothing happens, make sure Autogram is installed and running.
+        </p>
+
+        <!-- server / status -->
+        <pre
+                class="w-full border border-gray-300 bg-white p-3 rounded-md text-xs whitespace-pre-wrap"
+                v-if="statusMsg"
+        >{{ statusMsg }}</pre>
+
+        <a
+                class="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-md"
+                href="autogram://go"
+                v-if="showOpenLink"
         >
-          <option value="PAdES_BASELINE_B">PAdES_BASELINE_B (for PDF)</option>
-          <option value="XAdES_BASELINE_B">XAdES_BASELINE_B (for XML)</option>
-          <option value="CAdES_BASELINE_B">CAdES_BASELINE_B</option>
-        </select>
+            Open Autogram
+        </a>
+    </footer>
+</div>
 
-        <label class="font-semibold text-gray-700 block">
-          Container (optional):
-        </label>
-        <select
-          v-model="containerType"
-          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
-        >
-          <option value="">(no container)</option>
-          <option value="ASiC_E">ASiC_E</option>
-        </select>
-      </div>
+<script>
+    const {createApp, ref, computed} = Vue;
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
 
-      <div
-        class="border border-gray-300 rounded-md p-4 mb-5 bg-white"
-        v-if="showXadesSettings"
-      >
-        <h2 class="text-lg font-semibold mb-2 text-gray-800">XAdES Settings</h2>
-        <label for="packagingType" class="font-semibold text-gray-700 block">
-          XML packaging type (Packaging):
-        </label>
-        <select
-          id="packagingType"
-          v-model="xadesPackaging"
-          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
-        >
-          <option value="ENVELOPED">ENVELOPED</option>
-          <option value="ENVELOPING">ENVELOPING</option>
-        </select>
-        <div class="mt-2 text-sm text-gray-700">
-          <p>XAdES is used for XML documents or inside an ASiC container.</p>
-        </div>
-      </div>
-
-      <div
-        class="border border-gray-300 rounded-md p-4 mb-5 bg-white"
-        v-if="showPadesSettings"
-      >
-        <h2 class="text-lg font-semibold mb-2 text-gray-800">PAdES Settings</h2>
-        <label for="checkPdfA" class="font-semibold text-gray-700 block">
-          Check PDF/A compliance?
-        </label>
-        <select
-          id="checkPdfA"
-          v-model="checkPDFA"
-          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
-        >
-          <option :value="true">Yes</option>
-          <option :value="false">No</option>
-        </select>
-        <div class="mt-2 text-sm text-gray-700">
-          <p>PAdES is used for PDF documents.</p>
-        </div>
-      </div>
-
-      <div
-        class="border border-gray-300 rounded-md p-4 mb-5 bg-white"
-        v-if="showAsicSettings"
-      >
-        <h2 class="text-lg font-semibold mb-2 text-gray-800">ASiC Container</h2>
-        <label for="asicNote" class="font-semibold text-gray-700 block">
-          Additional fields for ASiC:
-        </label>
-        <input
-          type="text"
-          id="asicNote"
-          v-model="asicNote"
-          placeholder="Enter any value (optional)"
-          class="block w-full mt-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
-        />
-        <div class="mt-2 text-sm text-gray-700">
-          <p>
-            ASiC_E creates an archive with the file and the signature in a
-            single container.
-          </p>
-        </div>
-      </div>
-
-      <button
-        @click="signDocument"
-        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md"
-      >
-        Sign Document
-      </button>
-
-      <!-- Displaying status/result -->
-      <div
-        class="response-area mt-5 border border-gray-300 bg-white p-4 rounded-md text-sm text-gray-800 whitespace-pre-wrap"
-      >
-        {{ responseMessage }}
-      </div>
-    </div>
-
-    <script>
-      const { createApp, ref, computed } = Vue;
-
-      createApp({
+    createApp({
         setup() {
-          const fileData = ref(null); // Base64 file content
-          const fileName = ref("");   // Selected file name
-          const mimeType = ref("application/xml;base64");
-          const signatureLevel = ref("XAdES_BASELINE_B");
-          const containerType = ref("");
-          const xadesPackaging = ref("ENVELOPED");
-          const checkPDFA = ref(false);
-          const asicNote = ref("");
+            const fileData = ref(null);
+            const fileName = ref('');
+            const checkPDFA = ref(false);
+            const showAdvanced = ref(false);
 
-          const responseMessage = ref("Waiting for user action...");
+            const statusMsg = ref('');
+            const errorMsg = ref('');
+            const pdfaDetected = ref(null);
+            const showOpenLink = ref(false);
 
-          // Show XAdES settings when XAdES is selected
-          const showXadesSettings = computed(() => {
-            return signatureLevel.value.includes("XAdES");
-          });
-          // Show PAdES settings when PAdES is selected
-          const showPadesSettings = computed(() => {
-            return signatureLevel.value.includes("PAdES");
-          });
-          // Show ASiC fields when containerType = ASiC_E
-          const showAsicSettings = computed(() => {
-            return containerType.value === "ASiC_E";
-          });
+            const fileReady = computed(() => !!fileData.value);
+            const canSign = computed(() => fileReady.value && showAdvanced.value);
 
-          // 1) Reading file to Base64
-          const onFileChange = async (event) => {
-            const file = event.target.files[0];
-            if (!file) {
-              responseMessage.value = "No file selected!";
-              fileData.value = null;
-              fileName.value = "";
-              return;
-            }
-            fileName.value = file.name;
-            responseMessage.value = `Reading file...`;
-            try {
-              const base64Content = await readFileAsBase64(file);
-              fileData.value = base64Content;
-              responseMessage.value = `File "${file.name}" has been read to Base64.`;
-            } catch (err) {
-              fileData.value = null;
-              responseMessage.value = `Reading error: ${err}`;
-            }
-          };
-
-          const readFileAsBase64 = (file) => {
-            return new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                const result = reader.result;
-                const base64Index = result.indexOf("base64,") + 7;
-                const base64String = result.substring(base64Index);
-                resolve(base64String);
-              };
-              reader.onerror = (error) => reject(error);
-              reader.readAsDataURL(file);
-            });
-          };
-
-          // 2) Sign document
-          const signDocument = async () => {
-            if (!fileData.value) {
-              responseMessage.value = "No file to sign. Please select a file first!";
-              return;
-            }
-            responseMessage.value = "Forming request to Autogram...";
-
-            const requestBody = {
-              document: {
-                filename: fileName.value,
-                content: fileData.value,
-              },
-              parameters: {
-                level: signatureLevel.value,
-                container: containerType.value || null,
-              },
-              payloadMimeType: mimeType.value,
+            const isPdfA = async (arrayBuffer) => {
+                try {
+                    const doc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                    const meta = await doc.getMetadata();
+                    const xml = meta?.metadata?.getAll
+                        ? meta.metadata.getAll()
+                        : meta?.metadata || '';
+                    await doc.destroy();
+                    return /pdfaid:/i.test(xml);
+                } catch {
+                    return false;
+                }
             };
 
-            if (showXadesSettings.value) {
-              requestBody.parameters.packaging = xadesPackaging.value;
-            }
-            if (showPadesSettings.value) {
-              requestBody.parameters.checkPDFACompliance = checkPDFA.value;
-            }
-            if (showAsicSettings.value && asicNote.value) {
-              // 'asicNote' is just a demo field, not recognized by Autogram
-              requestBody.parameters.asicNote = asicNote.value;
-            }
+            const readAsBase64 = (f) => new Promise((res, rej) => {
+                const r = new FileReader();
+                r.onload = () => res(r.result.split('base64,')[1] || '');
+                r.onerror = rej;
+                r.readAsDataURL(f);
+            });
 
-            responseMessage.value = "Sending request to Autogram Server...";
+            const onPdfChange = async (e) => {
+                errorMsg.value = '';
+                statusMsg.value = '';
+                pdfaDetected.value = null;
+                showOpenLink.value = false;
 
-            try {
-              const res = await fetch("http://localhost:37200/sign", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestBody),
-              });
+                const f = e.target.files[0];
+                if (!f) return;
 
-              if (res.ok) {
-                const data = await res.json();
-                responseMessage.value =
-                  `Signing successful!\n` +
-                  `Server response:\n` +
-                  JSON.stringify(data, null, 2);
-              } else {
-                const errText = await res.text();
-                responseMessage.value = `Server returned an error (${res.status}):\n${errText}`;
-              }
-            } catch (err) {
-              if (
-                err instanceof TypeError &&
-                err.message.includes("Failed to fetch")
-              ) {
-                responseMessage.value =
-                  "Error: It seems we could not connect to Autogram.\n" +
-                  "Maybe it's not running.\n" +
-                  "Check if Autogram is running on your computer.\n" +
-                  "If you don't have it, download it here:\n" +
-                  "https://sluzby.slovensko.digital/autogram/#download";
-              } else {
-                responseMessage.value = `Other error:\n${err}`;
-              }
-            }
-          };
+                if (!f.name.toLowerCase().endsWith('.pdf')) {
+                    errorMsg.value = 'Only .pdf files are allowed.';
+                    return;
+                }
 
-          return {
-            fileName,
-            mimeType,
-            signatureLevel,
-            containerType,
-            xadesPackaging,
-            checkPDFA,
-            asicNote,
-            responseMessage,
-            onFileChange,
-            signDocument,
-            showXadesSettings,
-            showPadesSettings,
-            showAsicSettings,
-          };
+                fileName.value = f.name;
+                statusMsg.value = 'Reading PDF & analysing…';
+
+                try {
+                    const buffer = await f.arrayBuffer();
+                    pdfaDetected.value = await isPdfA(buffer);
+                    fileData.value = await readAsBase64(f);
+
+                    showAdvanced.value = true;
+                    checkPDFA.value = !pdfaDetected.value;
+                    statusMsg.value = 'PDF ready. Review advanced option, then click “Sign PDF”.';
+                } catch (err) {
+                    errorMsg.value = 'Read error.';
+                    fileData.value = null;
+                    statusMsg.value = '';
+                }
+            };
+
+            const tryOpenAutogram = () => {
+                const t0 = Date.now();
+                window.location.href = 'autogram://go';
+                setTimeout(() => {
+                    if (document.visibilityState === 'visible' && Date.now() - t0 > 1000) {
+                        showOpenLink.value = true;
+                    }
+                }, 1200);
+            };
+
+            const signPdf = async () => {
+                statusMsg.value = 'Sending to Autogram…';
+                showOpenLink.value = false;
+
+                const body = {
+                    document: {filename: fileName.value, content: fileData.value},
+                    parameters: {level: 'PAdES_BASELINE_B', checkPDFACompliance: checkPDFA.value},
+                    payloadMimeType: 'application/pdf;base64',
+                };
+
+                try {
+                    const res = await fetch('http://localhost:37200/sign', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(body),
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        statusMsg.value = 'Signed OK:\n' + JSON.stringify(data, null, 2);
+                        tryOpenAutogram();
+                    } else {
+                        statusMsg.value = `Server error ${res.status}`;
+                        showOpenLink.value = true;
+                    }
+                } catch (err) {
+                    statusMsg.value = err.message.includes('Failed to fetch')
+                        ? 'Cannot reach Autogram. Is it running?'
+                        : `Error: ${err}`;
+                    showOpenLink.value = true;
+                }
+            };
+
+            return {
+                fileName, errorMsg, statusMsg,
+                pdfaDetected, showAdvanced, checkPDFA,
+                fileReady, canSign, showOpenLink,
+                onPdfChange, signPdf,
+            };
         },
-      }).mount("#app");
-    </script>
-  </body>
+    }).mount('#app');
+</script>
+</body>
 </html>
