@@ -203,8 +203,24 @@
                     });
 
                     if (res.ok) {
+                        // Parse the response as JSON
                         const data = await res.json();
-                        statusMsg.value = 'Signed OK:\n' + JSON.stringify(data, null, 2);
+                        const bytes = Uint8Array.from(atob(data.content), c => c.charCodeAt(0));
+                        const blob  = new Blob([bytes], { type: 'application/pdf' });
+
+                        // Create a URL for the blob and trigger a download
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'signed.pdf';
+                        a.style.display = 'none';
+                        // Append to the body
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(url);
+
+                        statusMsg.value = 'Signed OK – file downloaded.';
                         tryOpenAutogram();
                     } else {
                         statusMsg.value = `Server error ${res.status}`;
