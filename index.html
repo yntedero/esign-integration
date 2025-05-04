@@ -4,20 +4,14 @@
     <meta charset="UTF-8"/>
     <title>Autogram Signature</title>
 
-    <!-- Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-
-    <!-- Tailwind (Play CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
-    <!-- PDF-JS (for reliable PDF/A detection) -->
     <script
             crossorigin="anonymous"
             integrity="sha512-7D3bP56hi9ppEpHoW1vwyk6scsKUXcEiqaS5P+uS8q4XnF2Hr8n7ZaawQy3P0DHy4OqdsKUaR/MCx2CYXiHTMw=="
             referrerpolicy="no-referrer"
             src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.min.js"
     ></script>
-
 
 </head>
 
@@ -38,10 +32,6 @@
                 class="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-3 hover:border-blue-500 focus:outline-none focus:ring-blue-500"
                 type="file"
         />
-
-        <p class="text-center text-sm text-gray-700" v-if="fileName">
-            Selected: <strong>{{ fileName }}</strong>
-        </p>
         <p class="text-center text-sm text-red-600 mt-2" v-if="errorMsg">
             {{ errorMsg }}
         </p>
@@ -130,7 +120,7 @@
             const showOpenLink = ref(false);
 
             const fileReady = computed(() => !!fileData.value);
-            const canSign = computed(() => fileReady.value && showAdvanced.value);
+            const canSign = computed(() => fileReady.value);
 
             const isPdfA = async (arrayBuffer) => {
                 try {
@@ -175,8 +165,8 @@
                     pdfaDetected.value = await isPdfA(buffer);
                     fileData.value = await readAsBase64(f);
 
-                    showAdvanced.value = true;
-                    checkPDFA.value = !pdfaDetected.value;
+                    showAdvanced.value = false;
+                    checkPDFA.value = pdfaDetected.value;
                     statusMsg.value = 'PDF ready. Review advanced option, then click “Sign PDF”.';
                 } catch (err) {
                     errorMsg.value = 'Read error.';
