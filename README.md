@@ -34,8 +34,7 @@ autogram-signature/
 * To target a different server address, edit the method `fetch (Fetch API)` URL in function `signPdf()`
 
 ---
-Launching Autogram CLI Silently at Startup
-------------------------------------------
+## Launching Autogram CLI Silently at Startup
 
 To run `autogram-cli.exe` on Windows boot (for all users) without any visible console or GUI, the most stable and user-friendly approach is to use **Task Scheduler**. This lets you configure Autogram CLI to run in the background on system startup. Here's how to set it up step by step:
 
