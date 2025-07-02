@@ -2,109 +2,104 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"/>
-    <title>Autogram Signature</title>
+    <title>Podpisovanie dokumentov</title>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script
-            crossorigin="anonymous"
+    <script crossorigin="anonymous"
             integrity="sha512-7D3bP56hi9ppEpHoW1vwyk6scsKUXcEiqaS5P+uS8q4XnF2Hr8n7ZaawQy3P0DHy4OqdsKUaR/MCx2CYXiHTMw=="
             referrerpolicy="no-referrer"
-            src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.min.js"
-    ></script>
+            src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.min.js">
+    </script>
 
 </head>
 
 <body class="min-h-screen flex items-start justify-center bg-gray-100 p-4">
-<div class="w-full max-w-lg bg-white border border-gray-300 rounded-lg shadow" id="app">
+<div id="app" class="w-full max-w-lg bg-white border border-gray-300 rounded-lg shadow">
 
     <header class="rounded-t-lg bg-blue-500 text-white text-center py-3 text-xl font-bold">
-        Autogram Signature
+        Podpisovanie dokumentov
     </header>
 
     <!-- STEP 1 -->
     <section class="px-6 py-5">
-        <h2 class="text-center text-lg font-semibold mb-4">Step 1 · Select PDF</h2>
+        <h2 class="text-center text-lg font-semibold mb-4">Vyberte PDF</h2>
 
-        <input
-                @change="onPdfChange"
-                accept=".pdf"
-                class="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-3 hover:border-blue-500 focus:outline-none focus:ring-blue-500"
-                type="file"
-        />
-        <p class="text-center text-sm text-red-600 mt-2" v-if="errorMsg">
+        <input accept=".pdf"
+               class="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-3 hover:border-blue-500 focus:outline-none focus:ring-blue-500"
+               type="file"
+               @change="onPdfChange"/>
+        <p v-if="errorMsg" class="text-center text-sm text-red-600 mt-2">
             {{ errorMsg }}
         </p>
 
         <!-- PDF/A result -->
-        <p
-                :class="pdfaDetected ? 'text-green-600' : 'text-yellow-700'"
-                class="text-center text-sm mt-2"
-                v-if="pdfaDetected !== null"
-        >
-            {{ pdfaDetected
-                ? 'The file is PDF/A-conformant'
-                : 'The file is a regular PDF (not PDF/A)' }}
+        <p v-if="pdfaDetected !== null"
+           :class="pdfaDetected ? 'text-green-600' : 'text-yellow-700'"
+           class="text-center text-sm mt-2">
+            {{
+                pdfaDetected
+                        ? 'Súbor je v súlade s PDF/A'
+                        : 'Súbor je bežný PDF (nie PDF/A)'
+            }}
         </p>
     </section>
 
     <!-- ADVANCED -->
-    <section class="border-t border-gray-200 px-6 py-5" v-if="fileReady">
-        <button
-                @click="showAdvanced = !showAdvanced"
-                class="mx-auto flex items-center text-sm text-gray-600 hover:text-gray-800"
-        >
+    <section v-if="fileReady" class="border-t border-gray-200 px-6 py-5">
+        <button class="mx-auto flex items-center text-sm text-gray-600 hover:text-gray-800"
+                @click="showAdvanced = !showAdvanced">
             <span class="mr-1">{{ showAdvanced ? '▼' : '►' }}</span>
-            {{ showAdvanced ? 'Hide advanced option' : 'Show advanced option' }}
+            {{ showAdvanced ? 'Skryť pokročilé nastavenia' : 'Zobraziť pokročilé nastavenia' }}
         </button>
 
-        <div
-                class="mt-4 border border-blue-200 bg-blue-50 rounded-md p-4 text-sm"
-                v-if="showAdvanced"
-        >
-            <label class="font-semibold block mb-1">Check PDF/A compliance?</label>
-            <select
-                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                    v-model="checkPDFA"
-            >
-                <option :value="true">Yes</option>
-                <option :value="false">No</option>
+        <div v-if="showAdvanced"
+             class="mt-4 border border-blue-200 bg-blue-50 rounded-md p-4 text-sm">
+            <label class="font-semibold block mb-1">Skontrolovať súlad s PDF/A?</label>
+            <select v-model="checkPDFA"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                <option :value="true">Áno</option>
+                <option :value="false">Nie</option>
             </select>
         </div>
     </section>
 
     <!-- SIGN -->
     <footer class="px-6 pb-6 flex flex-col items-center space-y-3">
-        <button
-                :disabled="!canSign"
-                @click="signPdf"
+        <button :disabled="!canSign"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-md disabled:opacity-50"
-        >
-            Sign PDF
+                @click="signPdf">
+            Podpísať PDF
         </button>
 
-        <p class="text-xs text-gray-500 mt-1" v-if="showOpenLink">
-            If nothing happens, make sure Autogram is installed and running.
-        </p>
-
         <!-- server / status -->
-        <pre
-                class="w-full border border-gray-300 bg-white p-3 rounded-md text-xs whitespace-pre-wrap"
-                v-if="statusMsg"
+        <pre class="w-full self-start border border-gray-300 bg-white p-2 rounded-md text-xs text-left whitespace-pre-wrap"
+             v-if="statusMsg"
         >{{ statusMsg }}</pre>
 
-        <a
-                class="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-md"
-                href="autogram://go"
-                v-if="showOpenLink"
-        >
-            Open Autogram
+        <p v-if="showOpenLink" class="text-xs text-gray-500 mt-1">
+            Ak sa nič nestane, uistite sa, že Autogram je nainštalovaný a spustený.
+        </p>
+
+        <a v-if="showOpenLink"
+           class="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-md"
+           href="autogram://go">
+            Otvoriť Autogram
+        </a>
+        <p v-if="showOpenLink" class="text-xs text-gray-500 mt-1">
+            Alebo
+        </p>
+        <a v-if="showDownloadLink"
+           class="inline-block bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-semibold px-4 py-2 rounded-md"
+           href="https://sluzby.slovensko.digital/autogram/#download" rel="noopener"
+           target="_blank">
+            Stiahnuť Autogram
         </a>
     </footer>
 </div>
 
 <script>
-    const {createApp, ref, computed} = Vue;
+    const {createApp, ref, computed, onMounted} = Vue;
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
 
     createApp({
@@ -118,6 +113,7 @@
             const errorMsg = ref('');
             const pdfaDetected = ref(null);
             const showOpenLink = ref(false);
+            const showDownloadLink = ref(false);
 
             const fileReady = computed(() => !!fileData.value);
             const canSign = computed(() => fileReady.value);
@@ -148,17 +144,18 @@
                 statusMsg.value = '';
                 pdfaDetected.value = null;
                 showOpenLink.value = false;
+                showDownloadLink.value = false;
 
                 const f = e.target.files[0];
                 if (!f) return;
 
                 if (!f.name.toLowerCase().endsWith('.pdf')) {
-                    errorMsg.value = 'Only .pdf files are allowed.';
+                    errorMsg.value = 'Sú povolené len súbory .pdf.';
                     return;
                 }
 
                 fileName.value = f.name;
-                statusMsg.value = 'Reading PDF & analysing…';
+                statusMsg.value = 'Načítavam PDF a analyzujem…';
 
                 try {
                     const buffer = await f.arrayBuffer();
@@ -167,27 +164,55 @@
 
                     showAdvanced.value = false;
                     checkPDFA.value = pdfaDetected.value;
-                    statusMsg.value = 'PDF ready. Review advanced option, then click “Sign PDF”.';
+                    statusMsg.value = 'Hotovo. Skontrolujte pokročilé nastavenia aknite na „Podpísať PDF“.';
                 } catch (err) {
-                    errorMsg.value = 'Read error.';
+                    errorMsg.value = 'Chyba čítania.';
                     fileData.value = null;
                     statusMsg.value = '';
                 }
             };
 
-            const tryOpenAutogram = () => {
-                const t0 = Date.now();
+            const openAutogram = () => {
                 window.location.href = 'autogram://go';
-                setTimeout(() => {
-                    if (document.visibilityState === 'visible' && Date.now() - t0 > 1000) {
-                        showOpenLink.value = true;
-                    }
-                }, 1200);
+            };
+
+            const tryOpenAutogram = async () => {
+                showOpenLink.value = false;
+                showDownloadLink.value = false;
+                openAutogram();
+                const running = await checkAutogramRunning();
+                if (!running && document.visibilityState === 'visible') {
+                    showDownloadLink.value = true;
+                }
+            };
+
+            const checkAutogramRunning = async () => {
+                try {
+                    await fetch('http://localhost:37200/sign', {method: 'GET'});
+                    return true;
+                } catch {
+                    return false;
+                }
+            };
+
+            const autoLaunchAutogram = async () => {
+                const running = await checkAutogramRunning();
+                if (!running) {
+                    openAutogram();
+                    setTimeout(async () => {
+                        const still = await checkAutogramRunning();
+                        if (!still && document.visibilityState === 'visible') {
+                            showOpenLink.value = true;
+                            showDownloadLink.value = true;
+                        }
+                    }, 1000);
+                }
             };
 
             const signPdf = async () => {
-                statusMsg.value = 'Sending to Autogram…';
+                statusMsg.value = 'Odosielam do Autogramu…';
                 showOpenLink.value = false;
+                showDownloadLink.value = false;
 
                 const body = {
                     document: {filename: fileName.value, content: fileData.value},
@@ -206,7 +231,7 @@
                         // Parse the response as JSON
                         const data = await res.json();
                         const bytes = Uint8Array.from(atob(data.content), c => c.charCodeAt(0));
-                        const blob  = new Blob([bytes], { type: 'application/pdf' });
+                        const blob = new Blob([bytes], {type: 'application/pdf'});
 
                         // Create a URL for the blob and trigger a download
                         const url = URL.createObjectURL(blob);
@@ -220,30 +245,34 @@
                         a.remove();
                         URL.revokeObjectURL(url);
 
-                        statusMsg.value = 'Signed OK – file downloaded.';
-                        tryOpenAutogram();
+                        statusMsg.value = 'Podpis úspešný';
                     } else {
-                        statusMsg.value = `Server error ${res.status}`;
+                        statusMsg.value = `Chyba servera ${res.status}`;
                         showOpenLink.value = true;
                     }
                 } catch (err) {
                     statusMsg.value = err.message.includes('Failed to fetch')
-                        ? 'Cannot reach Autogram. Is it running?'
-                        : `Error: ${err}`;
+                        ? 'Nie je možné kontaktovať Autogram. Je spustený?'
+                        : `Chyba: ${err}`;
                     showOpenLink.value = true;
+                    showDownloadLink.value = false;
                 }
             };
+
+            onMounted(() => {
+                autoLaunchAutogram();
+            });
 
             return {
                 fileName, errorMsg, statusMsg,
                 pdfaDetected, showAdvanced, checkPDFA,
-                fileReady, canSign, showOpenLink,
-                onPdfChange, signPdf,
+                fileReady, canSign, showOpenLink, showDownloadLink,
+                autoLaunchAutogram, checkAutogramRunning, tryOpenAutogram,
+                onPdfChange, signPdf, openAutogram
             };
         },
     }).mount('#app');
 </script>
 </body>
 </html>
-
-
+ 
