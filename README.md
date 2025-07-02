@@ -23,7 +23,7 @@ autogram-signature/
 3. Make sure that it runs at live server or opened in a browser,
 4. Install the [Autogram Desktop](https://sluzby.slovensko.digital/autogram/#download) so the custom URI `autogram://go` is registered
 5. Follow the UI: select a PDF → adjust options → **Sign PDF**
-   If the desktop app doesn’t launch automatically, click **Open Autoram**
+   If the desktop app doesn’t launch automatically, click **Open Autogram**
 ---
 
 ### Customisation notes
