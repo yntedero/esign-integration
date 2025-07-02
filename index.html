@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sk">
 <head>
     <meta charset="UTF-8"/>
-    <title>Autogram Signature</title>
+    <title>Podpis Autogramu</title>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -19,12 +19,12 @@
 <div class="w-full max-w-lg bg-white border border-gray-300 rounded-lg shadow" id="app">
 
     <header class="rounded-t-lg bg-blue-500 text-white text-center py-3 text-xl font-bold">
-        Autogram Signature
+        Podpis Autogramu
     </header>
 
     <!-- STEP 1 -->
     <section class="px-6 py-5">
-        <h2 class="text-center text-lg font-semibold mb-4">Step 1 · Select PDF</h2>
+        <h2 class="text-center text-lg font-semibold mb-4">Krok 1 · Vyberte PDF</h2>
 
         <input
                 @change="onPdfChange"
@@ -43,8 +43,8 @@
                 v-if="pdfaDetected !== null"
         >
             {{ pdfaDetected
-                ? 'The file is PDF/A-conformant'
-                : 'The file is a regular PDF (not PDF/A)' }}
+                ? 'Súbor je v súlade s PDF/A'
+                : 'Súbor je bežný PDF (nie PDF/A)' }}
         </p>
     </section>
 
@@ -55,20 +55,20 @@
                 class="mx-auto flex items-center text-sm text-gray-600 hover:text-gray-800"
         >
             <span class="mr-1">{{ showAdvanced ? '▼' : '►' }}</span>
-            {{ showAdvanced ? 'Hide advanced option' : 'Show advanced option' }}
+            {{ showAdvanced ? 'Skryť pokročilé nastavenia' : 'Zobraziť pokročilé nastavenia' }}
         </button>
 
         <div
                 class="mt-4 border border-blue-200 bg-blue-50 rounded-md p-4 text-sm"
                 v-if="showAdvanced"
         >
-            <label class="font-semibold block mb-1">Check PDF/A compliance?</label>
+            <label class="font-semibold block mb-1">Skontrolovať súlad s PDF/A?</label>
             <select
                     class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                     v-model="checkPDFA"
             >
-                <option :value="true">Yes</option>
-                <option :value="false">No</option>
+                <option :value="true">Áno</option>
+                <option :value="false">Nie</option>
             </select>
         </div>
     </section>
@@ -80,11 +80,11 @@
                 @click="signPdf"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-md disabled:opacity-50"
         >
-            Sign PDF
+            Podpísať PDF
         </button>
 
         <p class="text-xs text-gray-500 mt-1" v-if="showOpenLink">
-            If nothing happens, make sure Autogram is installed and running.
+            Ak sa nič nestane, uistite sa, že Autogram je nainštalovaný a spustený.
         </p>
 
         <!-- server / status -->
@@ -98,13 +98,21 @@
                 href="autogram://go"
                 v-if="showOpenLink"
         >
-            Open Autogram
+            Otvoriť Autogram
+        </a>
+
+        <a
+                class="inline-block bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-semibold px-4 py-2 rounded-md"
+                href="https://sluzby.slovensko.digital/autogram/#download"
+                v-if="showDownloadLink"
+        >
+            Stiahnuť Autogram
         </a>
     </footer>
 </div>
 
 <script>
-    const {createApp, ref, computed} = Vue;
+    const {createApp, ref, computed, onMounted} = Vue;
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
 
     createApp({
@@ -118,6 +126,7 @@
             const errorMsg = ref('');
             const pdfaDetected = ref(null);
             const showOpenLink = ref(false);
+            const showDownloadLink = ref(false);
 
             const fileReady = computed(() => !!fileData.value);
             const canSign = computed(() => fileReady.value);
@@ -148,17 +157,18 @@
                 statusMsg.value = '';
                 pdfaDetected.value = null;
                 showOpenLink.value = false;
+                showDownloadLink.value = false;
 
                 const f = e.target.files[0];
                 if (!f) return;
 
                 if (!f.name.toLowerCase().endsWith('.pdf')) {
-                    errorMsg.value = 'Only .pdf files are allowed.';
+                    errorMsg.value = 'Sú povolené len súbory .pdf.';
                     return;
                 }
 
                 fileName.value = f.name;
-                statusMsg.value = 'Reading PDF & analysing…';
+                statusMsg.value = 'Načítavam PDF a analyzujem…';
 
                 try {
                     const buffer = await f.arrayBuffer();
@@ -167,27 +177,56 @@
 
                     showAdvanced.value = false;
                     checkPDFA.value = pdfaDetected.value;
-                    statusMsg.value = 'PDF ready. Review advanced option, then click “Sign PDF”.';
+                    statusMsg.value = 'PDF je pripravené. Skontrolujte pokročilé nastavenia a kliknite na „Podpísať PDF“.';
                 } catch (err) {
-                    errorMsg.value = 'Read error.';
+                    errorMsg.value = 'Chyba čítania.';
                     fileData.value = null;
                     statusMsg.value = '';
                 }
             };
 
-            const tryOpenAutogram = () => {
-                const t0 = Date.now();
+            const openAutogram = () => {
                 window.location.href = 'autogram://go';
+            };
+
+            const tryOpenAutogram = () => {
+                showOpenLink.value = false;
+                showDownloadLink.value = false;
+                openAutogram();
                 setTimeout(() => {
-                    if (document.visibilityState === 'visible' && Date.now() - t0 > 1000) {
-                        showOpenLink.value = true;
+                    if (document.visibilityState === 'visible') {
+                        showDownloadLink.value = true;
                     }
-                }, 1200);
+                }, 1000);
+            };
+
+            const checkAutogramRunning = async () => {
+                try {
+                    await fetch('http://localhost:37200/sign', {method: 'GET'});
+                    return true;
+                } catch {
+                    return false;
+                }
+            };
+
+            const autoLaunchAutogram = async () => {
+                const running = await checkAutogramRunning();
+                if (!running) {
+                    openAutogram();
+                    setTimeout(async () => {
+                        const still = await checkAutogramRunning();
+                        if (!still && document.visibilityState === 'visible') {
+                            showOpenLink.value = true;
+                            showDownloadLink.value = true;
+                        }
+                    }, 2000);
+                }
             };
 
             const signPdf = async () => {
-                statusMsg.value = 'Sending to Autogram…';
+                statusMsg.value = 'Odosielam do Autogramu…';
                 showOpenLink.value = false;
+                showDownloadLink.value = false;
 
                 const body = {
                     document: {filename: fileName.value, content: fileData.value},
@@ -220,24 +259,30 @@
                         a.remove();
                         URL.revokeObjectURL(url);
 
-                        statusMsg.value = 'Signed OK – file downloaded.';
+                        statusMsg.value = 'Podpis úspešný – súbor stiahnutý.';
                         tryOpenAutogram();
                     } else {
-                        statusMsg.value = `Server error ${res.status}`;
+                        statusMsg.value = `Chyba servera ${res.status}`;
                         showOpenLink.value = true;
+                        showDownloadLink.value = false;
                     }
                 } catch (err) {
                     statusMsg.value = err.message.includes('Failed to fetch')
-                        ? 'Cannot reach Autogram. Is it running?'
-                        : `Error: ${err}`;
+                        ? 'Nie je možné kontaktovať Autogram. Je spustený?'
+                        : `Chyba: ${err}`;
                     showOpenLink.value = true;
+                    showDownloadLink.value = false;
                 }
             };
+
+            onMounted(() => {
+                setTimeout(autoLaunchAutogram, 5000);
+            });
 
             return {
                 fileName, errorMsg, statusMsg,
                 pdfaDetected, showAdvanced, checkPDFA,
-                fileReady, canSign, showOpenLink,
+                fileReady, canSign, showOpenLink, showDownloadLink,
                 onPdfChange, signPdf,
             };
         },
