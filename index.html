@@ -73,8 +73,8 @@
         </button>
 
         <!-- server / status -->
-        <pre class="w-full self-start border border-gray-300 bg-white p-2 rounded-md text-xs text-left whitespace-pre-wrap"
-             v-if="statusMsg"
+        <pre v-if="statusMsg"
+             class="w-full self-start border border-gray-300 bg-white p-2 rounded-md text-xs text-left whitespace-pre-wrap"
         >{{ statusMsg }}</pre>
 
         <p v-if="showOpenLink" class="text-xs text-gray-500 mt-1">
@@ -86,7 +86,7 @@
            href="autogram://go">
             Otvoriť Autogram
         </a>
-        <p v-if="showOpenLink" class="text-xs text-gray-500 mt-1">
+        <p v-if="showOpenLink && showDownloadLink" class="text-xs text-gray-500 mt-1">
             Alebo
         </p>
         <a v-if="showDownloadLink"
@@ -149,8 +149,13 @@
                 const f = e.target.files[0];
                 if (!f) return;
 
-                if (!f.name.toLowerCase().endsWith('.pdf')) {
-                    errorMsg.value = 'Sú povolené len súbory .pdf.';
+                if (f.size > 20 * 1024 * 1024) {
+                    errorMsg.value = 'Súbor presahuje 20 MB.';
+                    return;
+                }
+
+                if (f.type !== 'application/pdf' || !f.name.toLowerCase().endsWith('.pdf')) {
+                    errorMsg.value = 'Sú povolené len PDF súbory.';
                     return;
                 }
 
@@ -275,4 +280,3 @@
 </script>
 </body>
 </html>
- 
